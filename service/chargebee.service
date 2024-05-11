@@ -1,0 +1,14 @@
+[Unit]
+Description=referal_chargebee
+
+[Service]
+Type=simple
+WorkingDirectory=/root/go/github.com/bennyscetbun/referal_chargebee
+ExecStart=/usr/local/go/bin/go run ./ ./args
+Restart=always
+# Restart service after 10 seconds if the dotnet service crashes:
+RestartSec=10
+User=root
+Environment=
+[Install]
+WantedBy=multi-user.target
