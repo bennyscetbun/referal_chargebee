@@ -117,6 +117,7 @@ func CreateReferalCoupon(customerID string) error {
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeForever,
 		ApplyOn:            couponEnum.ApplyOnEachSpecifiedItem,
+		PlanConstraint:     couponEnum.PlanConstraintAll,
 	}).Request()
 	if err != nil {
 		return tracerr.Wrap(err)
