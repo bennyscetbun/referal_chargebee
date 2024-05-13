@@ -2,7 +2,6 @@ package chargebee
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -81,9 +80,10 @@ func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 func GiveCreditToCustomer(customerID string) error {
 	_, err := customerAction.AddPromotionalCredits(
 		customerID, &customer.AddPromotionalCreditsRequestParams{
-			Amount:      chargebee.Int64(100),
-			Description: "Credits de parainage",
-			CreditType:  enum.CreditTypeReferralRewards,
+			Amount:       chargebee.Int64(100),
+			Description:  "Credits de parainage",
+			CreditType:   enum.CreditTypeReferralRewards,
+			CurrencyCode: "EUR",
 		}).Request()
 	if err != nil {
 		return tracerr.Wrap(err)
@@ -93,10 +93,11 @@ func GiveCreditToCustomer(customerID string) error {
 
 func retrieveAllCoupon() ([]*coupon.Coupon, error) {
 	ret := []*coupon.Coupon{}
-
+	var offset string
 	for {
 		result, err := couponAction.List(&coupon.ListRequestParams{
-			Limit: chargebee.Int32(100),
+			Limit:  chargebee.Int32(1),
+			Offset: offset,
 		}).ListRequest()
 		if err != nil {
 			return nil, tracerr.Wrap(err)
@@ -104,28 +105,38 @@ func retrieveAllCoupon() ([]*coupon.Coupon, error) {
 		for idx := 0; idx < len(result.List); idx++ {
 			ret = append(ret, result.List[idx].Coupon)
 		}
-		fmt.Println(result.NextOffset, result.List)
 		if result.NextOffset == "" {
 			return ret, nil
 		}
+		offset = result.NextOffset
 	}
 }
 
-func hasAlreadyReferalCoupon(customerID string) (bool, error) {
-	coupons, err := retrieveAllCoupon()
-	if err != nil {
-		return false, err
-	}
-	for _, coupon := range coupons {
-		if strings.HasPrefix(coupon.Id, REFERAL_COUPON_PREFIX+"_"+customerID+"_") {
-			return true, nil
+func HasAlreadyReferalCoupon(customerID string) (bool, error) {
+	var offset string
+	for {
+		result, err := couponAction.List(&coupon.ListRequestParams{
+			Limit:  chargebee.Int32(100),
+			Offset: offset,
+		}).ListRequest()
+		if err != nil {
+			return false, tracerr.Wrap(err)
 		}
+		for idx := 0; idx < len(result.List); idx++ {
+			if strings.HasPrefix(result.List[idx].Coupon.Id, REFERAL_COUPON_PREFIX+"_"+customerID+"_") {
+				return true, nil
+			}
+
+		}
+		if result.NextOffset == "" {
+			return false, nil
+		}
+		offset = result.NextOffset
 	}
-	return false, nil
 }
 
 func CreateReferalCoupon(customerID string) error {
-	if alreadyDone, err := hasAlreadyReferalCoupon(customerID); err != nil {
+	if alreadyDone, err := HasAlreadyReferalCoupon(customerID); err != nil {
 		return err
 	} else if alreadyDone {
 		return nil
