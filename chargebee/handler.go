@@ -2,6 +2,7 @@ package chargebee
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	couponAction "github.com/chargebee/chargebee-go/v3/actions/coupon"
 	customerAction "github.com/chargebee/chargebee-go/v3/actions/customer"
 	"github.com/chargebee/chargebee-go/v3/enum"
-	"github.com/chargebee/chargebee-go/v3/filter"
 	"github.com/chargebee/chargebee-go/v3/models/coupon"
 	couponEnum "github.com/chargebee/chargebee-go/v3/models/coupon/enum"
 	"github.com/chargebee/chargebee-go/v3/models/customer"
@@ -91,16 +91,37 @@ func GiveCreditToCustomer(customerID string) error {
 	return nil
 }
 
-func hasAlreadyReferalCoupon(customerID string) (bool, error) {
-	result, err := couponAction.List(&coupon.ListRequestParams{
-		Id: &filter.StringFilter{
-			StartsWith: REFERAL_COUPON_PREFIX + "_" + customerID,
-		},
-	}).ListRequest()
-	if err != nil {
-		return false, tracerr.Wrap(err)
+func retrieveAllCoupon() ([]*coupon.Coupon, error) {
+	ret := []*coupon.Coupon{}
+
+	for {
+		result, err := couponAction.List(&coupon.ListRequestParams{
+			Limit: chargebee.Int32(100),
+		}).ListRequest()
+		if err != nil {
+			return nil, tracerr.Wrap(err)
+		}
+		for idx := 0; idx < len(result.List); idx++ {
+			ret = append(ret, result.List[idx].Coupon)
+		}
+		fmt.Println(result.NextOffset, result.List)
+		if result.NextOffset == "" {
+			return ret, nil
+		}
 	}
-	return len(result.List) > 0, nil
+}
+
+func hasAlreadyReferalCoupon(customerID string) (bool, error) {
+	coupons, err := retrieveAllCoupon()
+	if err != nil {
+		return false, err
+	}
+	for _, coupon := range coupons {
+		if strings.HasPrefix(coupon.Id, REFERAL_COUPON_PREFIX+"_"+customerID+"_") {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func CreateReferalCoupon(customerID string) error {
