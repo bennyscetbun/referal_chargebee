@@ -32,7 +32,10 @@ func WebhookHandler(ctx *gin.Context) {
 
 	switch webhookData.EventType {
 	case "subscription_created":
-		subcriptionCreatedHandler(webhookData)
+		if err := subcriptionCreatedHandler(webhookData); err != nil {
+			log.Println(err)
+			ctx.AbortWithStatus(http.StatusInternalServerError)
+		}
 	}
 	ctx.Status(http.StatusOK)
 }
