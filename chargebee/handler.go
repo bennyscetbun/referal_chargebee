@@ -112,7 +112,7 @@ func CreateReferalCoupon(customerID string) error {
 
 	_, err := couponAction.Create(&coupon.CreateRequestParams{
 		Id:                 makeCouponReferalForCustomer(customerID),
-		Name:               "Coupon Parainage",
+		Name:               "Coupon Parainage " + customerID,
 		DiscountPercentage: chargebee.Float64(0.5),
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeForever,
