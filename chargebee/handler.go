@@ -9,11 +9,12 @@ import (
 
 	"github.com/chargebee/chargebee-go/v3"
 	couponAction "github.com/chargebee/chargebee-go/v3/actions/coupon"
-	promotionalCreditAction "github.com/chargebee/chargebee-go/v3/actions/promotionalcredit"
+	customerAction "github.com/chargebee/chargebee-go/v3/actions/customer"
+	"github.com/chargebee/chargebee-go/v3/enum"
 	"github.com/chargebee/chargebee-go/v3/filter"
 	"github.com/chargebee/chargebee-go/v3/models/coupon"
 	couponEnum "github.com/chargebee/chargebee-go/v3/models/coupon/enum"
-	"github.com/chargebee/chargebee-go/v3/models/promotionalcredit"
+	"github.com/chargebee/chargebee-go/v3/models/customer"
 	"github.com/gin-gonic/gin"
 	"github.com/ztrue/tracerr"
 )
@@ -78,11 +79,12 @@ func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 }
 
 func GiveCreditToCustomer(customerID string) error {
-	_, err := promotionalCreditAction.Add(&promotionalcredit.AddRequestParams{
-		CustomerId:  customerID,
-		Amount:      chargebee.Int64(100),
-		Description: "Credits de parainage",
-	}).Request()
+	_, err := customerAction.AddPromotionalCredits(
+		customerID, &customer.AddPromotionalCreditsRequestParams{
+			Amount:      chargebee.Int64(100),
+			Description: "Credits de parainage",
+			CreditType:  enum.CreditTypeReferralRewards,
+		}).Request()
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
@@ -108,19 +110,13 @@ func CreateReferalCoupon(customerID string) error {
 		return nil
 	}
 
-	_, err := couponAction.CreateForItems(&coupon.CreateForItemsRequestParams{
+	_, err := couponAction.Create(&coupon.CreateRequestParams{
 		Id:                 makeCouponReferalForCustomer(customerID),
 		Name:               "Coupon Parainage",
 		DiscountPercentage: chargebee.Float64(0.5),
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeForever,
 		ApplyOn:            couponEnum.ApplyOnEachSpecifiedItem,
-		ItemConstraints: []*coupon.CreateForItemsItemConstraintParams{
-			{
-				Constraint: couponEnum.ItemConstraintConstraintAll,
-				ItemType:   couponEnum.ItemConstraintItemTypePlan,
-			},
-		},
 	}).Request()
 	if err != nil {
 		return tracerr.Wrap(err)
