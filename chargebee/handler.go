@@ -2,7 +2,6 @@ package chargebee
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	couponEnum "github.com/chargebee/chargebee-go/v3/models/coupon/enum"
 	"github.com/chargebee/chargebee-go/v3/models/promotionalcredit"
 	"github.com/gin-gonic/gin"
+	"github.com/ztrue/tracerr"
 )
 
 func WebhookHandler(ctx *gin.Context) {
@@ -23,18 +23,21 @@ func WebhookHandler(ctx *gin.Context) {
 	if err != nil {
 		log.Println(err)
 		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
 	}
 	webhookData := &WebhookCallback{}
 	if err := json.Unmarshal(jsonData, &webhookData); err != nil {
 		log.Println(err)
 		ctx.AbortWithStatus(http.StatusBadRequest)
+		return
 	}
 
 	switch webhookData.EventType {
 	case "subscription_created":
 		if err := subcriptionCreatedHandler(webhookData); err != nil {
-			log.Println(err)
+			tracerr.Print(err)
 			ctx.AbortWithStatus(http.StatusInternalServerError)
+			return
 		}
 	}
 	ctx.Status(http.StatusOK)
@@ -43,9 +46,6 @@ func WebhookHandler(ctx *gin.Context) {
 const REFERAL_COUPON_PREFIX = "REFERAL"
 
 func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
-	if len(webhookData.Content.Subscription.Coupons) == 0 {
-		return nil
-	}
 	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
 		if strings.HasPrefix(couponInfo.CouponId, REFERAL_COUPON_PREFIX) {
 			return nil
@@ -72,7 +72,7 @@ func makeCouponReferalForCustomer(customerID string) string {
 func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 	splitted := strings.Split(couponID, "_")
 	if len(splitted) != 3 {
-		return "", errors.New("bad coupon referal format")
+		return "", tracerr.Errorf("bad coupon referal format")
 	}
 	return splitted[1], nil
 }
@@ -84,7 +84,7 @@ func GiveCreditToCustomer(customerID string) error {
 		Description: "Credits de parainage",
 	}).Request()
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func hasAlreadyReferalCoupon(customerID string) (bool, error) {
 		},
 	}).ListRequest()
 	if err != nil {
-		return false, err
+		return false, tracerr.Wrap(err)
 	}
 	return len(result.List) > 0, nil
 }
@@ -123,7 +123,7 @@ func CreateReferalCoupon(customerID string) error {
 		},
 	}).Request()
 	if err != nil {
-		return err
+		return tracerr.Wrap(err)
 	}
 	return nil
 }
