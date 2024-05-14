@@ -47,7 +47,7 @@ const REFERAL_COUPON_PREFIX = "REFERAL"
 
 func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
 	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
-		if strings.HasPrefix(couponInfo.CouponId, REFERAL_COUPON_PREFIX) {
+		if !strings.HasPrefix(couponInfo.CouponId, REFERAL_COUPON_PREFIX) {
 			return nil
 		}
 		referalCustomerID, err := extractCustomerFromReferalCoupon(couponInfo.CouponId)
