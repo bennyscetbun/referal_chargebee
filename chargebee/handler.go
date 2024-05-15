@@ -3,8 +3,8 @@ package chargebee
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/chargebee/chargebee-go/v3"
@@ -21,13 +21,13 @@ import (
 func WebhookHandler(ctx *gin.Context) {
 	jsonData, err := io.ReadAll(ctx.Request.Body)
 	if err != nil {
-		log.Println(err)
+		tracerr.Print(err)
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 	webhookData := &WebhookCallback{}
 	if err := json.Unmarshal(jsonData, &webhookData); err != nil {
-		log.Println(err)
+		tracerr.Print(err)
 		ctx.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -43,11 +43,11 @@ func WebhookHandler(ctx *gin.Context) {
 	ctx.Status(http.StatusOK)
 }
 
-const REFERAL_COUPON_PREFIX = "REFERAL"
+const REFERRAL_COUPON_PREFIX = "REF"
 
 func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
 	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
-		if !strings.HasPrefix(couponInfo.CouponId, REFERAL_COUPON_PREFIX) {
+		if !strings.HasPrefix(couponInfo.CouponId, REFERRAL_COUPON_PREFIX) {
 			return nil
 		}
 		referalCustomerID, err := extractCustomerFromReferalCoupon(couponInfo.CouponId)
@@ -66,13 +66,18 @@ func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
 }
 
 func makeCouponReferalForCustomer(customerID string) string {
-	return REFERAL_COUPON_PREFIX + "_" + customerID + "_" + generateRandomString(3)
+	sum := 0
+	for _, c := range customerID {
+		sum += int(c)
+	}
+	sum *= 100 // so we are sure we ve got at least 3 digits
+	return REFERRAL_COUPON_PREFIX + "_" + customerID + "_" + strconv.Itoa(sum)[:3]
 }
 
 func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 	splitted := strings.Split(couponID, "_")
 	if len(splitted) != 3 {
-		return "", tracerr.Errorf("bad coupon referal format")
+		return "", tracerr.Errorf("bad coupon referral format")
 	}
 	return splitted[1], nil
 }
@@ -80,7 +85,7 @@ func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 func GiveCreditToCustomer(customerID string) error {
 	_, err := customerAction.AddPromotionalCredits(
 		customerID, &customer.AddPromotionalCreditsRequestParams{
-			Amount:       chargebee.Int64(100),
+			Amount:       &cfg.CreditOffertEnCentime,
 			Description:  "Credits de parainage",
 			CreditType:   enum.CreditTypeReferralRewards,
 			CurrencyCode: "EUR",
@@ -112,48 +117,48 @@ func retrieveAllCoupon() ([]*coupon.Coupon, error) {
 	}
 }
 
-func HasAlreadyReferalCoupon(customerID string) (bool, error) {
-	var offset string
-	for {
-		result, err := couponAction.List(&coupon.ListRequestParams{
-			Limit:  chargebee.Int32(100),
-			Offset: offset,
-		}).ListRequest()
-		if err != nil {
-			return false, tracerr.Wrap(err)
-		}
-		for idx := 0; idx < len(result.List); idx++ {
-			if strings.HasPrefix(result.List[idx].Coupon.Id, REFERAL_COUPON_PREFIX+"_"+customerID+"_") {
-				return true, nil
-			}
-
-		}
-		if result.NextOffset == "" {
-			return false, nil
-		}
-		offset = result.NextOffset
+func HasAlreadyReferalCoupon(couponID string) (bool, error) {
+	result, err := couponAction.Retrieve(couponID).Request()
+	if err != nil {
+		return false, tracerr.Wrap(err)
 	}
+	return result.Coupon != nil, nil
 }
 
 func CreateReferalCoupon(customerID string) error {
-	if alreadyDone, err := HasAlreadyReferalCoupon(customerID); err != nil {
+	couponID := makeCouponReferalForCustomer(customerID)
+	if alreadyDone, err := HasAlreadyReferalCoupon(couponID); err != nil {
 		return err
 	} else if alreadyDone {
 		return nil
 	}
+	customerEmail, err := GetCustomerEmail(customerID)
+	if err != nil {
+		return err
+	}
 
-	_, err := couponAction.Create(&coupon.CreateRequestParams{
-		Id:                 makeCouponReferalForCustomer(customerID),
+	if _, err := couponAction.Create(&coupon.CreateRequestParams{
+		Id:                 couponID,
 		Name:               "Coupon Parainage " + customerID,
-		DiscountPercentage: chargebee.Float64(0.5),
+		DiscountPercentage: &cfg.ReductionEnPourcent,
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeForever,
 		ApplyOn:            couponEnum.ApplyOnEachSpecifiedItem,
 		PlanConstraint:     couponEnum.PlanConstraintAll,
 		AddonConstraint:    couponEnum.AddonConstraintAll,
-	}).Request()
-	if err != nil {
+	}).Request(); err != nil {
 		return tracerr.Wrap(err)
 	}
+	if err := sendEmail(customerEmail, couponID); err != nil {
+		return err
+	}
 	return nil
+}
+
+func GetCustomerEmail(customerID string) (string, error) {
+	resp, err := customerAction.Retrieve(customerID).Request()
+	if err != nil {
+		return "", tracerr.Wrap(err)
+	}
+	return resp.Customer.Email, nil
 }
