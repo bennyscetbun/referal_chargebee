@@ -118,11 +118,17 @@ func retrieveAllCoupon() ([]*coupon.Coupon, error) {
 }
 
 func HasAlreadyReferalCoupon(couponID string) (bool, error) {
-	result, err := couponAction.Retrieve(couponID).Request()
+	_, err := couponAction.Retrieve(couponID).Request()
 	if err != nil {
+		switch v := err.(type) {
+		case *chargebee.Error:
+			if v.HTTPStatusCode == 404 {
+				return false, nil
+			}
+		}
 		return false, tracerr.Wrap(err)
 	}
-	return result.Coupon != nil, nil
+	return true, nil
 }
 
 func CreateReferalCoupon(customerID string) error {
