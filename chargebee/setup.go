@@ -32,4 +32,5 @@ func Setup(configFilePath string) error {
 	}
 	chargebeelib.Configure(cfg.ChargeBeeApiKey, cfg.ChargeBeeSite)
 	setupBrevoClient(cfg.BrevoApiKey)
+	return nil
 }
