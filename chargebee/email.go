@@ -18,13 +18,13 @@ func setupBrevoClient(apiKey string) error {
 	return nil
 }
 
-func sendEmail(clientEmail string, referralID string) error {
+func sendEmail(clientEmail string, emailConf ConfigEmail, params map[string]interface{}) error {
 	body := brevo.SendSmtpEmail{
-		Subject:    cfg.ReferralEmailSubject,
-		TemplateId: int64(240),
+		Subject:    emailConf.Subject,
+		TemplateId: int64(emailConf.TemplateID),
 		Sender: &brevo.SendSmtpEmailSender{
-			Name:  cfg.ReferralEmailName,
-			Email: cfg.ReferralEmailAddress,
+			Name:  emailConf.Name,
+			Email: emailConf.Address,
 		},
 		To: []brevo.SendSmtpEmailTo{
 			{
@@ -33,17 +33,22 @@ func sendEmail(clientEmail string, referralID string) error {
 			},
 		},
 		ReplyTo: &brevo.SendSmtpEmailReplyTo{
-			Name:  cfg.ReferralEmailName,
-			Email: cfg.ReferralEmailAddress,
+			Name:  emailConf.Name,
+			Email: emailConf.Address,
 		},
-		Params: map[string]interface{}{
-			"REFERRALID": referralID,
-			"subject":    cfg.ReferralEmailSubject,
-		},
+		Params: params,
 	}
 	_, _, err := brevoApiClient.TransactionalEmailsApi.SendTransacEmail(context.Background(), body)
 	if err != nil {
 		return tracerr.Wrap(err)
 	}
 	return nil
+}
+
+func sendReferalEmail(clientEmail string, referralID string) error {
+	return sendEmail(clientEmail, cfg.ReferralEmail, map[string]interface{}{"REFERRALID": referralID})
+}
+
+func sendCreditAddedEmail(clientEmail string) error {
+	return sendEmail(clientEmail, cfg.CreditAddedEmail, map[string]interface{}{})
 }

@@ -4,7 +4,16 @@
 	"BrevoApiKey": "BrevoApiKey",
 	"CreditOffertEnCentime": 100,
 	"ReductionEnPourcent": 1,
-	"ReferralEmailSubject": "Votre coupon de parrainage",
-	"ReferralEmailAddress": "bla@blo.com",
-	"ReferralEmailName": "alice"
+	"ReferralEmail": {
+		"Subject": "Votre coupon de parrainage",
+		"Address": "bla@blo.com",
+		"Name": "alice",
+		"TemplateID": 240
+	},
+	"CreditAddedEmail": {
+		"Subject": "Votre coupon de parrainage",
+		"Address": "bla@blo.com",
+		"Name": "alice",
+		"TemplateID": 241
+	}
 }

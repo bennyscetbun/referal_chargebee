@@ -14,9 +14,15 @@ type Config struct {
 	BrevoApiKey           string
 	CreditOffertEnCentime int64
 	ReductionEnPourcent   float64
-	ReferralEmailSubject  string
-	ReferralEmailAddress  string
-	ReferralEmailName     string
+	ReferralEmail         ConfigEmail
+	CreditAddedEmail      ConfigEmail
+}
+
+type ConfigEmail struct {
+	Subject    string
+	Address    string
+	Name       string
+	TemplateID int
 }
 
 var cfg Config

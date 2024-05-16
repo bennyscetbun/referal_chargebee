@@ -83,38 +83,24 @@ func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 }
 
 func GiveCreditToCustomer(customerID string) error {
-	_, err := customerAction.AddPromotionalCredits(
+	customerEmail, err := GetCustomerEmail(customerID)
+	if err != nil {
+		return err
+	}
+
+	if _, err := customerAction.AddPromotionalCredits(
 		customerID, &customer.AddPromotionalCreditsRequestParams{
 			Amount:       &cfg.CreditOffertEnCentime,
 			Description:  "Credits de parainage",
 			CreditType:   enum.CreditTypeReferralRewards,
 			CurrencyCode: "EUR",
-		}).Request()
-	if err != nil {
+		}).Request(); err != nil {
 		return tracerr.Wrap(err)
 	}
-	return nil
-}
-
-func retrieveAllCoupon() ([]*coupon.Coupon, error) {
-	ret := []*coupon.Coupon{}
-	var offset string
-	for {
-		result, err := couponAction.List(&coupon.ListRequestParams{
-			Limit:  chargebee.Int32(1),
-			Offset: offset,
-		}).ListRequest()
-		if err != nil {
-			return nil, tracerr.Wrap(err)
-		}
-		for idx := 0; idx < len(result.List); idx++ {
-			ret = append(ret, result.List[idx].Coupon)
-		}
-		if result.NextOffset == "" {
-			return ret, nil
-		}
-		offset = result.NextOffset
+	if err := sendCreditAddedEmail(customerEmail); err != nil {
+		return err
 	}
+	return nil
 }
 
 func HasAlreadyReferalCoupon(couponID string) (bool, error) {
@@ -155,7 +141,7 @@ func CreateReferalCoupon(customerID string) error {
 	}).Request(); err != nil {
 		return tracerr.Wrap(err)
 	}
-	if err := sendEmail(customerEmail, couponID); err != nil {
+	if err := sendReferalEmail(customerEmail, couponID); err != nil {
 		return err
 	}
 	return nil
