@@ -2,6 +2,7 @@ package chargebee
 
 import (
 	"context"
+	"strconv"
 
 	brevo "github.com/getbrevo/brevo-go/lib"
 	"github.com/ztrue/tracerr"
@@ -49,6 +50,8 @@ func sendReferalEmail(clientEmail string, referralID string) error {
 	return sendEmail(clientEmail, cfg.ReferralEmail, map[string]interface{}{"REFERRALID": referralID})
 }
 
-func sendCreditAddedEmail(clientEmail string) error {
-	return sendEmail(clientEmail, cfg.CreditAddedEmail, map[string]interface{}{})
+func sendCreditAddedEmail(clientEmail string, promotionalCredit int64) error {
+	return sendEmail(clientEmail, cfg.CreditAddedEmail, map[string]interface{}{
+		"PROMOTIONALCREDITS": strconv.FormatFloat(float64(promotionalCredit)/100.0, 'f', 2, 64),
+	})
 }

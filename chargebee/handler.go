@@ -83,7 +83,7 @@ func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 }
 
 func GiveCreditToCustomer(customerID string) error {
-	customerEmail, err := GetCustomerEmail(customerID)
+	customerInfo, err := GetCustomer(customerID)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func GiveCreditToCustomer(customerID string) error {
 		}).Request(); err != nil {
 		return tracerr.Wrap(err)
 	}
-	if err := sendCreditAddedEmail(customerEmail); err != nil {
+	if err := sendCreditAddedEmail(customerInfo.Email, customerInfo.PromotionalCredits+cfg.CreditOffertEnCentime); err != nil {
 		return err
 	}
 	return nil
@@ -124,7 +124,7 @@ func CreateReferalCoupon(customerID string) error {
 	} else if alreadyDone {
 		return nil
 	}
-	customerEmail, err := GetCustomerEmail(customerID)
+	customerInfo, err := GetCustomer(customerID)
 	if err != nil {
 		return err
 	}
@@ -141,16 +141,16 @@ func CreateReferalCoupon(customerID string) error {
 	}).Request(); err != nil {
 		return tracerr.Wrap(err)
 	}
-	if err := sendReferalEmail(customerEmail, couponID); err != nil {
+	if err := sendReferalEmail(customerInfo.Email, couponID); err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetCustomerEmail(customerID string) (string, error) {
+func GetCustomer(customerID string) (*customer.Customer, error) {
 	resp, err := customerAction.Retrieve(customerID).Request()
 	if err != nil {
-		return "", tracerr.Wrap(err)
+		return nil, tracerr.Wrap(err)
 	}
-	return resp.Customer.Email, nil
+	return resp.Customer, nil
 }
