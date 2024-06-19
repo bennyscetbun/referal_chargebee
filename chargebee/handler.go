@@ -135,7 +135,7 @@ func CreateReferalCoupon(customerID string) error {
 		Name:               "Coupon Parainage " + couponID,
 		DiscountPercentage: &cfg.ReductionEnPourcent,
 		DiscountType:       couponEnum.DiscountTypePercentage,
-		DurationType:       couponEnum.DurationTypeForever,
+		DurationType:       couponEnum.DurationTypeOneTime,
 		ApplyOn:            couponEnum.ApplyOnEachSpecifiedItem,
 		PlanConstraint:     couponEnum.PlanConstraintAll,
 		AddonConstraint:    couponEnum.AddonConstraintAll,
