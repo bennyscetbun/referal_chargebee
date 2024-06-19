@@ -136,7 +136,7 @@ func CreateReferalCoupon(customerID string) error {
 		DiscountPercentage: &cfg.ReductionEnPourcent,
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeOneTime,
-		ApplyOn:            couponEnum.ApplyOnEachSpecifiedItem,
+		ApplyOn:            couponEnum.ApplyOnInvoiceAmount,
 		PlanConstraint:     couponEnum.PlanConstraintAll,
 		AddonConstraint:    couponEnum.AddonConstraintAll,
 	}).Request(); err != nil {
