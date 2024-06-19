@@ -4,7 +4,7 @@ Description=referal_chargebee
 [Service]
 Type=simple
 WorkingDirectory=/root/go/github.com/bennyscetbun/referal_chargebee
-ExecStart=/usr/local/go/bin/go run ./ ./args
+ExecStart=/usr/local/go/bin/go run ./app/webhook_handler ./args
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10

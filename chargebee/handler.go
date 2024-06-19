@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/chargebee/chargebee-go/v3"
@@ -66,17 +65,19 @@ func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
 }
 
 func makeCouponReferalForCustomer(customerID string) string {
-	sum := 0
-	for _, c := range customerID {
-		sum += int(c)
-	}
-	sum *= 100 // so we are sure we ve got at least 3 digits
-	return REFERRAL_COUPON_PREFIX + "_" + customerID + "_" + strconv.Itoa(sum)[:3]
+	/*
+		sum := 0
+		for _, c := range customerID {
+			sum += int(c)
+		}
+		sum *= 100 // so we are sure we ve got at least 3 digits
+	*/
+	return REFERRAL_COUPON_PREFIX + "_" + customerID
 }
 
 func extractCustomerFromReferalCoupon(couponID string) (string, error) {
 	splitted := strings.Split(couponID, "_")
-	if len(splitted) != 3 {
+	if len(splitted) != 2 {
 		return "", tracerr.Errorf("bad coupon referral format")
 	}
 	return splitted[1], nil
@@ -131,7 +132,7 @@ func CreateReferalCoupon(customerID string) error {
 
 	if _, err := couponAction.Create(&coupon.CreateRequestParams{
 		Id:                 couponID,
-		Name:               "Coupon Parainage " + customerID,
+		Name:               "Coupon Parainage " + couponID,
 		DiscountPercentage: &cfg.ReductionEnPourcent,
 		DiscountType:       couponEnum.DiscountTypePercentage,
 		DurationType:       couponEnum.DurationTypeForever,
@@ -140,6 +141,9 @@ func CreateReferalCoupon(customerID string) error {
 		AddonConstraint:    couponEnum.AddonConstraintAll,
 	}).Request(); err != nil {
 		return tracerr.Wrap(err)
+	}
+	if !strings.Contains(customerInfo.Email, "@") {
+		return nil
 	}
 	if err := sendReferalEmail(customerInfo.Email, couponID); err != nil {
 		return err
