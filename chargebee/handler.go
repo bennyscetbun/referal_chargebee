@@ -2,6 +2,7 @@ package chargebee
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -45,20 +46,21 @@ func WebhookHandler(ctx *gin.Context) {
 const REFERRAL_COUPON_PREFIX = "REF"
 
 func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
+	if err := CreateReferalCoupon(webhookData.Content.Subscription.CustomerId); err != nil {
+		return err
+	}
 	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
 		if !strings.HasPrefix(couponInfo.CouponId, REFERRAL_COUPON_PREFIX) {
 			return nil
 		}
 		referalCustomerID, err := extractCustomerFromReferalCoupon(couponInfo.CouponId)
+		fmt.Println("Extract referal coupon", referalCustomerID, err)
 		if err != nil {
 			return err
 		}
 		if err := GiveCreditToCustomer(referalCustomerID); err != nil {
 			return err
 		}
-	}
-	if err := CreateReferalCoupon(webhookData.Content.Subscription.CustomerId); err != nil {
-		return err
 	}
 
 	return nil
