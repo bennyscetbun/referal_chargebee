@@ -2,7 +2,6 @@ package chargebee
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -49,18 +48,31 @@ func subcriptionCreatedHandler(webhookData *WebhookCallback) error {
 	if err := CreateReferalCoupon(webhookData.Content.Subscription.CustomerId); err != nil {
 		return err
 	}
-	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
-		if !strings.HasPrefix(couponInfo.CouponId, REFERRAL_COUPON_PREFIX) {
-			return nil
+	for _, discountInfo := range webhookData.Content.Invoice.Discounts {
+		if discountInfo.EntityType != "document_level_coupon" || !strings.HasPrefix(discountInfo.EntityId, REFERRAL_COUPON_PREFIX) {
+			continue
 		}
-		referalCustomerID, err := extractCustomerFromReferalCoupon(couponInfo.CouponId)
-		fmt.Println("Extract referal coupon", referalCustomerID, err)
+		referalCustomerID, err := extractCustomerFromReferalCoupon(discountInfo.EntityId)
 		if err != nil {
 			return err
 		}
 		if err := GiveCreditToCustomer(referalCustomerID); err != nil {
 			return err
 		}
+		return nil
+	}
+	for _, couponInfo := range webhookData.Content.Subscription.Coupons {
+		if !strings.HasPrefix(couponInfo.CouponId, REFERRAL_COUPON_PREFIX) {
+			continue
+		}
+		referalCustomerID, err := extractCustomerFromReferalCoupon(couponInfo.CouponId)
+		if err != nil {
+			return err
+		}
+		if err := GiveCreditToCustomer(referalCustomerID); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	return nil
